@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartFarm 대시보드</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;
+  --green:#4ade80;--red:#ef4444;--yellow:#f59e0b;
+  --blue:#60a5fa;--text:#e2e8f0;--muted:#64748b;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+header{background:var(--card);border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;gap:10px;}
+header h1{font-size:1.2rem;font-weight:600;}
+.dot{width:8px;height:8px;border-radius:50%;
+  background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#ts{margin-left:auto;font-size:.75rem;color:var(--muted);}
+
+#flame-bar{display:none;background:var(--red);color:#fff;
+  text-align:center;padding:10px;font-weight:700;
+  animation:blink .5s step-start infinite;}
+@keyframes blink{50%{opacity:.3}}
+
+.grid{display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;padding:20px;}
+.card{background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:18px;}
+.card-label{font-size:.7rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);margin-bottom:10px;}
+.big{font-size:2.4rem;font-weight:700;line-height:1.1;}
+.unit{font-size:.95rem;color:var(--muted);margin-left:3px;}
+
+/* 제어 카드 */
+.ctrl-title{font-size:.75rem;color:var(--muted);
+  font-weight:600;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:12px;}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.btn{padding:7px 14px;border-radius:7px;border:none;
+  cursor:pointer;font-size:.82rem;font-weight:500;
+  transition:opacity .15s;}
+.btn:hover{opacity:.8;}
+.g{background:var(--green);color:#0f1117;}
+.r{background:var(--red);color:#fff;}
+.b{background:var(--blue);color:#0f1117;}
+.y{background:var(--yellow);color:#0f1117;}
+.gr{background:var(--border);color:var(--text);}
+
+/* 로그 테이블 */
+.tbl{width:100%;border-collapse:collapse;font-size:.78rem;}
+.tbl th{color:var(--muted);text-align:left;padding:5px 4px;
+  border-bottom:1px solid var(--border);}
+.tbl td{padding:5px 4px;border-bottom:1px solid var(--border);}
+.badge{padding:2px 7px;border-radius:4px;font-size:.68rem;font-weight:600;}
+.ok{background:#14532d;color:var(--green);}
+.ng{background:#7f1d1d;color:#fca5a5;}
+
+/* 액추에이터 상태 */
+.act-row{display:flex;justify-content:space-between;
+  align-items:center;padding:8px 0;
+  border-bottom:1px solid var(--border);}
+.act-row:last-child{border:none;}
+.act-name{font-size:.85rem;color:var(--muted);}
+.act-val{font-size:.85rem;font-weight:600;}
+.on-txt{color:var(--green);}
+.off-txt{color:var(--muted);}
+
+.full{grid-column:1/-1;}
+</style>
+</head>
+<body>
+
+<div id="flame-bar">🔥 화재 감지! 즉시 확인하세요!</div>
+
+<header>
+  <div class="dot"></div>
+  <h1>🌱 SmartFarm 대시보드</h1>
+  <span id="ts"></span>
+</header>
+
+<div class="grid">
+
+  <!-- 센서 카드 -->
+  <div class="card">
+    <div class="card-label">🌡 온도</div>
+    <div class="big" id="v-temp">--<span class="unit">°C</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">💧 습도</div>
+    <div class="big" id="v-humi">--<span class="unit">%</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">☀️ 조도</div>
+    <div class="big" id="v-illu">--<span class="unit"></span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">🔥 화재</div>
+    <div class="big" id="v-flame" style="color:var(--green)">정상</div>
+  </div>
+
+  <!-- STM32 액추에이터 제어 -->
+  <div class="card full">
+    <div class="ctrl-title">⚙️ STM32 액추에이터 제어</div>
+
+    <div class="act-row">
+      <span class="act-name">DC 모터</span>
+      <div class="btn-row" style="margin:0">
+        <button class="btn g" onclick="ctrl('MOTOR','ON')">ON</button>
+        <button class="btn gr" onclick="ctrl('MOTOR','OFF')">OFF</button>
+      </div>
+    </div>
+    <div class="act-row">
+      <span class="act-name">부저</span>
+      <div class="btn-row" style="margin:0">
+        <button class="btn y" onclick="ctrl('BUZZER','ON')">ON</button>
+        <button class="btn gr" onclick="ctrl('BUZZER','OFF')">OFF</button>
+      </div>
+    </div>
+    <div class="act-row">
+      <span class="act-name">RGB LED</span>
+      <div class="btn-row" style="margin:0">
+        <button class="btn r"  onclick="ctrl('LED','R')">🔴 R</button>
+        <button class="btn g"  onclick="ctrl('LED','G')">🟢 G</button>
+        <button class="btn b"  onclick="ctrl('LED','B')">🔵 B</button>
+        <button class="btn gr" onclick="ctrl('LED','OFF')">OFF</button>
+      </div>
+    </div>
+    <div class="act-row">
+      <span class="act-name">수중 펌프</span>
+      <div class="btn-row" style="margin:0">
+        <button class="btn b"  onclick="ctrl('PUMP','ON')">ON</button>
+        <button class="btn gr" onclick="ctrl('PUMP','OFF')">OFF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 액추에이터 현재 상태 -->
+  <div class="card">
+    <div class="card-label">📊 현재 상태</div>
+    <div id="act-status">로딩 중...</div>
+  </div>
+
+  <!-- 센서 로그 -->
+  <div class="card full">
+    <div class="card-label">📋 최근 센서 로그</div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr><th>ID</th><th>온도</th><th>습도</th>
+              <th>조도</th><th>화재</th><th>시각</th></tr>
+        </thead>
+        <tbody id="log-body">
+          <tr><td colspan="6" style="color:var(--muted);
+              text-align:center">로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://10.10.16.197:8080';
+
+/* ── 센서 데이터 ── */
+async function fetchSensors() {
+  try {
+    const r = await fetch(API + '/api/sensors');
+    const data = await r.json();
+    if (!data.length) return;
+
+    const d = data[0];
+    setHTML('v-temp',  d.temp  + '<span class="unit">°C</span>');
+    setHTML('v-humi',  d.humi  + '<span class="unit">%</span>');
+    setHTML('v-illu',  d.illu  + '<span class="unit"></span>');
+
+    const hasFlame = data.some(x => x.flame == 1);
+    const fel = document.getElementById('v-flame');
+    fel.textContent = hasFlame ? '⚠ 감지됨' : '정상';
+    fel.style.color = hasFlame ? 'var(--red)' : 'var(--green)';
+    document.getElementById('flame-bar').style.display
+      = hasFlame ? 'block' : 'none';
+
+    /* 로그 테이블 */
+    document.getElementById('log-body').innerHTML =
+      data.slice(0,15).map(x => {
+        const t = new Date(x.ts*1000).toLocaleTimeString();
+        const fb = x.flame==1
+          ? '<span class="badge ng">감지</span>'
+          : '<span class="badge ok">없음</span>';
+        return `<tr><td>${x.id}</td><td>${x.temp}°C</td>
+          <td>${x.humi}%</td><td>${x.illu}</td>
+          <td>${fb}</td><td>${t}</td></tr>`;
+      }).join('');
+
+    document.getElementById('ts').textContent
+      = '갱신: ' + new Date().toLocaleTimeString();
+  } catch(e) { console.error(e); }
+}
+
+/* ── 액추에이터 상태 ── */
+async function fetchActuators() {
+  try {
+    const r = await fetch(API + '/api/actuators');
+    const data = await r.json();
+    document.getElementById('act-status').innerHTML =
+      data.map(x => {
+        const on = x.value !== 'OFF';
+        return `<div class="act-row">
+          <span class="act-name">${x.name}</span>
+          <span class="act-val ${on?'on-txt':'off-txt'}">
+            ${x.value}</span></div>`;
+      }).join('');
+  } catch(e) {}
+}
+
+/* ── 제어 명령 ── */
+async function ctrl(target, value) {
+  try {
+    const r = await fetch(API + '/api/control', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: `target=${target}&value=${value}`
+    });
+    const d = await r.json();
+    toast(d.ok ? `✅ ${target} → ${value}` : '❌ 실패');
+    fetchActuators();
+  } catch(e) { toast('❌ 서버 연결 실패'); }
+}
+
+/* ── 헬퍼 ── */
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+let toastTmr;
+function toast(msg) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = `position:fixed;bottom:20px;right:20px;
+      background:var(--card);border:1px solid var(--border);
+      color:var(--text);padding:9px 16px;border-radius:8px;
+      font-size:.82rem;z-index:99;transition:opacity .3s`;
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => t.style.opacity='0', 2500);
+}
+
+/* ── 폴링 ── */
+fetchSensors();
+fetchActuators();
+setInterval(fetchSensors,   5000);
+setInterval(fetchActuators, 5000);
+</script>
+</body>
+</html>
