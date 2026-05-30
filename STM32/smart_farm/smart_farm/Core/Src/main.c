@@ -152,6 +152,7 @@ int main(void)
 //  HAL_NVIC_SetPriority(USART6_IRQn, 5, 0);
 //  HAL_NVIC_EnableIRQ(USART6_IRQn);
 
+
   /* 초기 LED: 초록 (정상) */
   HAL_GPIO_WritePin(GPIOC, LED_R_Pin|LED_B_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOC, LED_G_Pin,           GPIO_PIN_SET);
@@ -160,6 +161,7 @@ int main(void)
   HAL_UART_Receive_IT(&huart6, &bt_rx_byte, 1);
 
   dbg("=== SmartFarm STM32 Start ===\r\n");
+
 
   /* USER CODE END 2 */
 

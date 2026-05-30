@@ -47,7 +47,7 @@
 #define HTTP_PORT       8080
 
 /* STM32 HC-06 블루투스 MAC — 페어링 후 실제 MAC으로 변경 */
-#define STM32_BT_ADDR   "98:DA:60:0D:92:E1"
+#define STM32_BT_ADDR   "98:DA:60:0D:AF:75"
 #define STM32_BT_CH     1
 
 /* MariaDB */
