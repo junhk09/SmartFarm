@@ -5,76 +5,73 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SmartFarm 대시보드</title>
 <style>
-:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;
-  --green:#4ade80;--red:#ef4444;--yellow:#f59e0b;
-  --blue:#60a5fa;--text:#e2e8f0;--muted:#64748b;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);
-  font-family:'Segoe UI',sans-serif;min-height:100vh;}
-
-header{background:var(--card);border-bottom:1px solid var(--border);
-  padding:14px 24px;display:flex;align-items:center;gap:10px;}
-header h1{font-size:1.2rem;font-weight:600;}
-.dot{width:8px;height:8px;border-radius:50%;
-  background:var(--green);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-#ts{margin-left:auto;font-size:.75rem;color:var(--muted);}
-
-#flame-bar{display:none;background:var(--red);color:#fff;
-  text-align:center;padding:10px;font-weight:700;
-  animation:blink .5s step-start infinite;}
-@keyframes blink{50%{opacity:.3}}
-
-.grid{display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:14px;padding:20px;}
-.card{background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:18px;}
-.card-label{font-size:.7rem;font-weight:600;text-transform:uppercase;
-  letter-spacing:.08em;color:var(--muted);margin-bottom:10px;}
-.big{font-size:2.4rem;font-weight:700;line-height:1.1;}
-.unit{font-size:.95rem;color:var(--muted);margin-left:3px;}
-
-/* 제어 카드 */
-.ctrl-title{font-size:.75rem;color:var(--muted);
-  font-weight:600;text-transform:uppercase;
-  letter-spacing:.08em;margin-bottom:12px;}
-.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-.btn{padding:7px 14px;border-radius:7px;border:none;
-  cursor:pointer;font-size:.82rem;font-weight:500;
-  transition:opacity .15s;}
-.btn:hover{opacity:.8;}
-.g{background:var(--green);color:#0f1117;}
-.r{background:var(--red);color:#fff;}
-.b{background:var(--blue);color:#0f1117;}
-.y{background:var(--yellow);color:#0f1117;}
-.gr{background:var(--border);color:var(--text);}
-
-/* 로그 테이블 */
-.tbl{width:100%;border-collapse:collapse;font-size:.78rem;}
-.tbl th{color:var(--muted);text-align:left;padding:5px 4px;
-  border-bottom:1px solid var(--border);}
-.tbl td{padding:5px 4px;border-bottom:1px solid var(--border);}
-.badge{padding:2px 7px;border-radius:4px;font-size:.68rem;font-weight:600;}
-.ok{background:#14532d;color:var(--green);}
-.ng{background:#7f1d1d;color:#fca5a5;}
-
-/* 액추에이터 상태 */
-.act-row{display:flex;justify-content:space-between;
-  align-items:center;padding:8px 0;
-  border-bottom:1px solid var(--border);}
-.act-row:last-child{border:none;}
-.act-name{font-size:.85rem;color:var(--muted);}
-.act-val{font-size:.85rem;font-weight:600;}
-.on-txt{color:var(--green);}
-.off-txt{color:var(--muted);}
-
-.full{grid-column:1/-1;}
+:root {
+  --bg:#0f1117; --card:#1a1d27; --border:#2a2d3a;
+  --green:#4ade80; --red:#ef4444; --yellow:#f59e0b;
+  --blue:#60a5fa; --text:#e2e8f0; --muted:#64748b;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; }
+header { background:var(--card); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:10px; }
+header h1 { font-size:1.2rem; font-weight:600; }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+#ts { margin-left:auto; font-size:.75rem; color:var(--muted); }
+#flame-bar { display:none; background:var(--red); color:#fff; text-align:center; padding:10px; font-weight:700; animation:blink .5s step-start infinite; }
+@keyframes blink { 50%{opacity:.3} }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; padding:20px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; }
+.card-label { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:10px; }
+.big { font-size:2.4rem; font-weight:700; line-height:1.1; }
+.unit { font-size:.95rem; color:var(--muted); margin-left:3px; }
+.season-card { grid-column:span 2; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:16px; }
+.season-top { display:flex; gap:24px; align-items:center; }
+.plant-container { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:160px; }
+.plant-scene { width:140px; height:140px; position:relative; display:flex; align-items:flex-end; justify-content:center; }
+.plant-pot { width:60px; height:40px; background:#8B4513; border-radius:0 0 8px 8px; position:absolute; bottom:0; }
+.plant-soil { width:70px; height:10px; background:#5D3A1A; border-radius:4px 4px 0 0; position:absolute; bottom:40px; }
+.plant-stem { width:4px; background:#22c55e; position:absolute; bottom:50px; left:50%; transform:translateX(-50%); border-radius:2px; transition:height .5s, background .5s; }
+.plant-leaf { position:absolute; border-radius:50% 0; transition:all .5s; }
+.plant-flower { position:absolute; border-radius:50%; transition:all .5s; }
+.season-info { flex:1; }
+.season-name { font-size:1.8rem; font-weight:700; margin-bottom:8px; transition:color .5s; }
+.season-desc { font-size:.85rem; color:var(--muted); line-height:1.6; margin-bottom:12px; }
+.temp-bar-wrap { margin-top:8px; }
+.temp-bar-label { font-size:.75rem; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between; }
+.temp-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+.temp-bar-fill { height:100%; border-radius:4px; transition:width .5s, background .5s; }
+.led-indicator { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.8rem; color:var(--muted); }
+.led-dot { width:12px; height:12px; border-radius:50%; transition:background .5s, box-shadow .5s; }
+.test-section { border-top:1px solid var(--border); padding-top:12px; }
+.test-label { font-size:.7rem; color:var(--muted); margin-bottom:8px; }
+.btn-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.btn { padding:7px 14px; border-radius:7px; border:none; cursor:pointer; font-size:.82rem; font-weight:500; transition:opacity .15s; }
+.btn:hover { opacity:.8; }
+.g { background:var(--green); color:#0f1117; }
+.r { background:var(--red); color:#fff; }
+.b { background:var(--blue); color:#0f1117; }
+.y { background:var(--yellow); color:#0f1117; }
+.gr { background:var(--border); color:var(--text); }
+.act-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+.act-row:last-child { border:none; }
+.act-name { font-size:.85rem; color:var(--muted); }
+.act-val { font-size:.85rem; font-weight:600; }
+.on-txt { color:var(--green); }
+.off-txt { color:var(--muted); }
+.tbl { width:100%; border-collapse:collapse; font-size:.78rem; }
+.tbl th { color:var(--muted); text-align:left; padding:5px 4px; border-bottom:1px solid var(--border); }
+.tbl td { padding:5px 4px; border-bottom:1px solid var(--border); }
+.badge { padding:2px 7px; border-radius:4px; font-size:.68rem; font-weight:600; }
+.ok { background:#14532d; color:var(--green); }
+.ng { background:#7f1d1d; color:#fca5a5; }
+.full { grid-column:1/-1; }
+.ctrl-title { font-size:.75rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+.pause-notice { font-size:.72rem; color:var(--yellow); margin-top:6px; display:none; }
 </style>
 </head>
 <body>
 
-<div id="flame-bar">🔥 화재 감지! 즉시 확인하세요!</div>
+<div id="flame-bar">🔥 화재 감지! 부저 및 워터펌프 자동 작동 중!</div>
 
 <header>
   <div class="dot"></div>
@@ -83,6 +80,58 @@ header h1{font-size:1.2rem;font-weight:600;}
 </header>
 
 <div class="grid">
+
+  <!-- 계절 + 가상 식물 카드 -->
+  <div class="season-card full">
+    <div class="season-top">
+      <div class="plant-container">
+        <div class="plant-scene" id="plant-scene">
+          <div class="plant-pot"></div>
+          <div class="plant-soil"></div>
+          <div class="plant-stem" id="plant-stem"></div>
+        </div>
+        <div style="font-size:.8rem;color:var(--muted)" id="plant-name">🌿 스마트팜 식물</div>
+        <div style="font-size:.75rem;color:var(--muted)" id="plant-status">상태 확인 중...</div>
+      </div>
+      <div class="season-info">
+        <div class="season-name" id="season-name">-- 계절</div>
+        <div class="season-desc" id="season-desc">센서 데이터를 기다리는 중...</div>
+        <div class="temp-bar-wrap">
+          <div class="temp-bar-label">
+            <span>온도</span>
+            <span id="temp-val-bar">--°C</span>
+          </div>
+          <div class="temp-bar">
+            <div class="temp-bar-fill" id="temp-fill" style="width:0%;background:var(--green)"></div>
+          </div>
+        </div>
+        <div class="led-indicator">
+          <div class="led-dot" id="led-dot"></div>
+          <span id="led-status">RGB LED 상태 확인 중</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 계절 테스트 -->
+    <div class="test-section">
+      <div class="test-label">🧪 계절 테스트 (버튼 누르면 15초간 자동갱신 일시정지)</div>
+      <div class="btn-row">
+        <button class="btn b" onclick="testSeason('winter',5)">❄️ 겨울</button>
+        <button class="btn g" onclick="testSeason('spring',18)">🌸 봄/가을</button>
+        <button class="btn r" onclick="testSeason('summer',30)">☀️ 여름</button>
+      </div>
+      <div id="pause-notice" class="pause-notice">⏸ 자동갱신 일시정지 중... <span id="pause-countdown">15</span>초 후 재개</div>
+    </div>
+
+    <!-- 화재 테스트 -->
+    <div class="test-section">
+      <div class="test-label">🔥 화재 테스트 (STM32 부저+펌프 실제 동작)</div>
+      <div class="btn-row">
+        <button class="btn r"  onclick="testFlame(true)">🔥 화재 발생 ON</button>
+        <button class="btn gr" onclick="testFlame(false)">✅ 화재 해제 OFF</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 센서 카드 -->
   <div class="card">
@@ -95,28 +144,27 @@ header h1{font-size:1.2rem;font-weight:600;}
   </div>
   <div class="card">
     <div class="card-label">☀️ 조도</div>
-    <div class="big" id="v-illu">--<span class="unit"></span></div>
+    <div class="big" id="v-illu">--</div>
   </div>
   <div class="card">
     <div class="card-label">🔥 화재</div>
     <div class="big" id="v-flame" style="color:var(--green)">정상</div>
   </div>
 
-  <!-- STM32 액추에이터 제어 -->
+  <!-- STM32 제어 -->
   <div class="card full">
     <div class="ctrl-title">⚙️ STM32 액추에이터 제어</div>
-
     <div class="act-row">
       <span class="act-name">DC 모터</span>
       <div class="btn-row" style="margin:0">
-        <button class="btn g" onclick="ctrl('MOTOR','ON')">ON</button>
+        <button class="btn g"  onclick="ctrl('MOTOR','ON')">ON</button>
         <button class="btn gr" onclick="ctrl('MOTOR','OFF')">OFF</button>
       </div>
     </div>
     <div class="act-row">
       <span class="act-name">부저</span>
       <div class="btn-row" style="margin:0">
-        <button class="btn y" onclick="ctrl('BUZZER','ON')">ON</button>
+        <button class="btn y"  onclick="ctrl('BUZZER','ON')">ON</button>
         <button class="btn gr" onclick="ctrl('BUZZER','OFF')">OFF</button>
       </div>
     </div>
@@ -138,7 +186,7 @@ header h1{font-size:1.2rem;font-weight:600;}
     </div>
   </div>
 
-  <!-- 액추에이터 현재 상태 -->
+  <!-- 현재 상태 -->
   <div class="card">
     <div class="card-label">📊 현재 상태</div>
     <div id="act-status">로딩 중...</div>
@@ -150,12 +198,10 @@ header h1{font-size:1.2rem;font-weight:600;}
     <div style="overflow-x:auto">
       <table class="tbl">
         <thead>
-          <tr><th>ID</th><th>온도</th><th>습도</th>
-              <th>조도</th><th>화재</th><th>시각</th></tr>
+          <tr><th>ID</th><th>온도</th><th>습도</th><th>조도</th><th>화재</th><th>시각</th></tr>
         </thead>
         <tbody id="log-body">
-          <tr><td colspan="6" style="color:var(--muted);
-              text-align:center">로딩 중...</td></tr>
+          <tr><td colspan="6" style="color:var(--muted);text-align:center">로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
@@ -164,67 +210,257 @@ header h1{font-size:1.2rem;font-weight:600;}
 </div>
 
 <script>
-const API = 'http://10.10.16.197:8080';
+const API          = 'http://10.10.16.65:8080';
+const HUMI_LOW     = 25;   /* 습도 20% 이하 → 펌프 5초 ON */
+const PUMP_SEC     = 5000; /* 펌프 자동 OFF 시간 (ms) */
+
+const TEMP_WINTER     = 10;
+const TEMP_SUMMER     = 25;
+const TEMP_SUMMER_DIM = 35;
+const TEMP_WINTER_BRT = 5;
+
+const seasonConfig = {
+  winter: {
+    name:'❄️ 겨울', color:'#60a5fa',
+    desc:'기온이 낮습니다. RGB LED가 파란색으로 켜집니다.',
+    plantEmoji:'🌲', plantStatus:'추운 날씨에 적응 중...',
+    ledColor:'#60a5fa', ledText:'RGB LED: 파랑'
+  },
+  spring: {
+    name:'🌸 봄 / 가을', color:'#4ade80',
+    desc:'온화한 날씨입니다. RGB LED가 초록색으로 켜집니다.',
+    plantEmoji:'🌿', plantStatus:'건강하게 자라는 중!',
+    ledColor:'#4ade80', ledText:'RGB LED: 초록'
+  },
+  summer: {
+    name:'☀️ 여름', color:'#ef4444',
+    desc:'기온이 높습니다. RGB LED가 빨간색으로 켜집니다.',
+    plantEmoji:'🌻', plantStatus:'더운 날씨를 버티는 중...',
+    ledColor:'#ef4444', ledText:'RGB LED: 빨강'
+  }
+};
+
+function getSeason(temp) {
+  if (temp <= TEMP_WINTER) return 'winter';
+  if (temp >= TEMP_SUMMER) return 'summer';
+  return 'spring';
+}
+
+function updatePlant(season, temp) {
+  const cfg = seasonConfig[season];
+  const scene = document.getElementById('plant-scene');
+  const stem  = document.getElementById('plant-stem');
+  scene.querySelectorAll('.plant-leaf,.plant-flower').forEach(e => e.remove());
+
+  if (season === 'winter') {
+    stem.style.height = '30px';
+    stem.style.background = '#86efac';
+    for (let i = 0; i < 3; i++) {
+      const leaf = document.createElement('div');
+      leaf.className = 'plant-leaf';
+      leaf.style.cssText = `width:20px;height:20px;background:#bfdbfe;left:${45+i*18}px;bottom:${55+i*10}px;border-radius:50%;opacity:.7;`;
+      scene.appendChild(leaf);
+    }
+  } else if (season === 'summer') {
+    const h = Math.max(40, Math.min(80, (temp-20)*3));
+    stem.style.height = h+'px';
+    stem.style.background = '#16a34a';
+    [[-18,15],[14,25],[-14,40],[12,55]].forEach(([x,y]) => {
+      const leaf = document.createElement('div');
+      leaf.className = 'plant-leaf';
+      leaf.style.cssText = `width:24px;height:16px;background:#22c55e;left:${50+x}px;bottom:${50+y}px;border-radius:${x<0?'50% 0 50% 0':'0 50% 0 50%'};opacity:.9;`;
+      scene.appendChild(leaf);
+    });
+    const flower = document.createElement('div');
+    flower.className = 'plant-flower';
+    flower.style.cssText = `width:20px;height:20px;background:#fbbf24;left:50%;bottom:${50+h}px;transform:translateX(-50%);`;
+    scene.appendChild(flower);
+  } else {
+    stem.style.height = '55px';
+    stem.style.background = '#16a34a';
+    [[-16,10],[12,20],[-14,35],[10,48]].forEach(([x,y]) => {
+      const leaf = document.createElement('div');
+      leaf.className = 'plant-leaf';
+      leaf.style.cssText = `width:22px;height:14px;background:#4ade80;left:${50+x}px;bottom:${50+y}px;border-radius:${x<0?'50% 0 50% 0':'0 50% 0 50%'};`;
+      scene.appendChild(leaf);
+    });
+    const bud = document.createElement('div');
+    bud.className = 'plant-flower';
+    bud.style.cssText = `width:14px;height:14px;background:#f472b6;left:50%;bottom:108px;transform:translateX(-50%);border-radius:50%;`;
+    scene.appendChild(bud);
+  }
+
+  document.getElementById('plant-name').textContent = cfg.plantEmoji + ' 스마트팜 식물';
+  document.getElementById('plant-status').textContent = cfg.plantStatus;
+  document.getElementById('season-name').textContent = cfg.name;
+  document.getElementById('season-name').style.color = cfg.color;
+  document.getElementById('season-desc').textContent = cfg.desc;
+
+  const ledDot = document.getElementById('led-dot');
+  let brightness = 1;
+  if (season === 'summer' && temp >= TEMP_SUMMER_DIM) brightness = 0.3;
+  ledDot.style.background = cfg.ledColor;
+  ledDot.style.opacity = brightness;
+  ledDot.style.boxShadow = `0 0 ${brightness*8}px ${cfg.ledColor}`;
+  let ledText = cfg.ledText;
+  if (season === 'summer' && temp >= TEMP_SUMMER_DIM) ledText += ' (밝기 낮춤)';
+  if (season === 'winter' && temp <= TEMP_WINTER_BRT) ledText += ' (밝기 최대)';
+  document.getElementById('led-status').textContent = ledText;
+
+  const pct = Math.min(100, Math.max(0, (temp/50)*100));
+  document.getElementById('temp-fill').style.width = pct+'%';
+  document.getElementById('temp-fill').style.background = cfg.color;
+  document.getElementById('temp-val-bar').textContent = temp.toFixed(1)+'°C';
+}
+
+/* ── 자동갱신 제어 ── */
+let sensorTimer   = null;
+let actuatorTimer = null;
+let pauseTimer    = null;
+let countdownTimer = null;
+
+function startAutoUpdate() {
+  clearInterval(sensorTimer);
+  clearInterval(actuatorTimer);
+  sensorTimer   = setInterval(fetchSensors,   5000);
+  actuatorTimer = setInterval(fetchActuators, 5000);
+}
+
+function pauseAutoUpdate(seconds = 15) {
+  clearInterval(sensorTimer);
+  clearInterval(actuatorTimer);
+  clearTimeout(pauseTimer);
+  clearInterval(countdownTimer);
+
+  const notice    = document.getElementById('pause-notice');
+  const countdown = document.getElementById('pause-countdown');
+  notice.style.display = 'block';
+  let remain = seconds;
+  countdown.textContent = remain;
+
+  countdownTimer = setInterval(() => {
+    remain--;
+    countdown.textContent = remain;
+    if (remain <= 0) clearInterval(countdownTimer);
+  }, 1000);
+
+  pauseTimer = setTimeout(() => {
+    notice.style.display = 'none';
+    startAutoUpdate();   /* ← 15초 후 자동갱신 재개 */
+  }, seconds * 1000);
+}
+
+/* ── 계절 테스트 ── */
+async function testSeason(season, temp) {
+  pauseAutoUpdate(15);
+  updatePlant(season, temp);
+  if (season === 'winter')      await ctrl('LED', 'B');
+  else if (season === 'spring') await ctrl('LED', 'G');
+  else if (season === 'summer') await ctrl('LED', 'R');
+}
+
+/* ── 화재 테스트 ── */
+async function testFlame(isOn) {
+  const flamBar = document.getElementById('flame-bar');
+  const flamEl  = document.getElementById('v-flame');
+
+  if (isOn) {
+    flamBar.style.display = 'block';
+    flamEl.textContent = '⚠ 감지됨';
+    flamEl.style.color = 'var(--red)';
+    await ctrl('BUZZER', 'ON');
+    await new Promise(r => setTimeout(r, 300));
+    await ctrl('PUMP',   'ON');
+    await new Promise(r => setTimeout(r, 300));
+    await ctrl('LED',    'R');
+    toast('🔥 화재 테스트 ON — 부저+펌프+LED(R) 작동');
+  } else {
+    flamBar.style.display = 'none';
+    flamEl.textContent = '정상';
+    flamEl.style.color = 'var(--green)';
+    await ctrl('BUZZER', 'OFF');
+    await new Promise(r => setTimeout(r, 300));
+    await ctrl('PUMP',   'OFF');
+    await new Promise(r => setTimeout(r, 300));
+    await ctrl('LED',    'G');
+    toast('✅ 화재 해제 — 부저+펌프 OFF, LED(G) 복귀');
+  }
+}
+
+/* ── 습도 낮으면 펌프 자동 제어 ── */
+let pumpAutoTimer = null;
+let pumpAutoRunning = false;
+
+async function checkHumidity(humi) {
+  if (humi <= HUMI_LOW && !pumpAutoRunning) {
+    pumpAutoRunning = true;
+    toast(`💧 습도 ${humi}% — 워터펌프 ${PUMP_SEC/1000}초 자동 가동!`);
+    await ctrl('PUMP', 'ON');
+    clearTimeout(pumpAutoTimer);
+    pumpAutoTimer = setTimeout(async () => {
+      await ctrl('PUMP', 'OFF');
+      toast('💧 워터펌프 자동 OFF');
+      pumpAutoRunning = false;
+    }, PUMP_SEC);
+  }
+}
 
 /* ── 센서 데이터 ── */
 async function fetchSensors() {
   try {
-    const r = await fetch(API + '/api/sensors');
+    const r = await fetch(API+'/api/sensors');
     const data = await r.json();
     if (!data.length) return;
+    const d    = data[0];
+    const temp = parseFloat(d.temp);
+    const humi = parseFloat(d.humi);
 
-    const d = data[0];
-    setHTML('v-temp',  d.temp  + '<span class="unit">°C</span>');
-    setHTML('v-humi',  d.humi  + '<span class="unit">%</span>');
-    setHTML('v-illu',  d.illu  + '<span class="unit"></span>');
+    setHTML('v-temp', d.temp+'<span class="unit">°C</span>');
+    setHTML('v-humi', d.humi+'<span class="unit">%</span>');
+    setHTML('v-illu', d.illu);
 
-    const hasFlame = data.some(x => x.flame == 1);
+    const hasFlame = data[0].flame == 1;
     const fel = document.getElementById('v-flame');
     fel.textContent = hasFlame ? '⚠ 감지됨' : '정상';
-    fel.style.color = hasFlame ? 'var(--red)' : 'var(--green)';
-    document.getElementById('flame-bar').style.display
-      = hasFlame ? 'block' : 'none';
+    fel.style.color  = hasFlame ? 'var(--red)' : 'var(--green)';
+    document.getElementById('flame-bar').style.display = hasFlame ? 'block' : 'none';
 
-    /* 로그 테이블 */
+    updatePlant(getSeason(temp), temp);
+
+    /* 습도 자동 펌프 체크 */
+    checkHumidity(humi);
+
     document.getElementById('log-body').innerHTML =
       data.slice(0,15).map(x => {
-        const t = new Date(x.ts*1000).toLocaleTimeString();
+        const t  = new Date(x.ts*1000).toLocaleTimeString();
         const fb = x.flame==1
           ? '<span class="badge ng">감지</span>'
           : '<span class="badge ok">없음</span>';
-        return `<tr><td>${x.id}</td><td>${x.temp}°C</td>
-          <td>${x.humi}%</td><td>${x.illu}</td>
-          <td>${fb}</td><td>${t}</td></tr>`;
+        return `<tr><td>${x.id}</td><td>${x.temp}°C</td><td>${x.humi}%</td><td>${x.illu}</td><td>${fb}</td><td>${t}</td></tr>`;
       }).join('');
 
-    document.getElementById('ts').textContent
-      = '갱신: ' + new Date().toLocaleTimeString();
+    document.getElementById('ts').textContent = '갱신: '+new Date().toLocaleTimeString();
   } catch(e) { console.error(e); }
 }
 
-/* ── 액추에이터 상태 ── */
 async function fetchActuators() {
   try {
-    const r = await fetch(API + '/api/actuators');
+    const r = await fetch(API+'/api/actuators');
     const data = await r.json();
     document.getElementById('act-status').innerHTML =
       data.map(x => {
         const on = x.value !== 'OFF';
-        return `<div class="act-row">
-          <span class="act-name">${x.name}</span>
-          <span class="act-val ${on?'on-txt':'off-txt'}">
-            ${x.value}</span></div>`;
+        return `<div class="act-row"><span class="act-name">${x.name}</span><span class="act-val ${on?'on-txt':'off-txt'}">${x.value}</span></div>`;
       }).join('');
   } catch(e) {}
 }
 
-/* ── 제어 명령 ── */
 async function ctrl(target, value) {
   try {
-    const r = await fetch(API + '/api/control', {
-      method: 'POST',
-      headers: {'Content-Type':'application/x-www-form-urlencoded'},
-      body: `target=${target}&value=${value}`
+    const r = await fetch(API+'/api/control', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`target=${target}&value=${value}`
     });
     const d = await r.json();
     toast(d.ok ? `✅ ${target} → ${value}` : '❌ 실패');
@@ -232,7 +468,6 @@ async function ctrl(target, value) {
   } catch(e) { toast('❌ 서버 연결 실패'); }
 }
 
-/* ── 헬퍼 ── */
 function setHTML(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html;
@@ -243,22 +478,17 @@ function toast(msg) {
   if (!t) {
     t = document.createElement('div');
     t.id = '_toast';
-    t.style.cssText = `position:fixed;bottom:20px;right:20px;
-      background:var(--card);border:1px solid var(--border);
-      color:var(--text);padding:9px 16px;border-radius:8px;
-      font-size:.82rem;z-index:99;transition:opacity .3s`;
+    t.style.cssText = `position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 16px;border-radius:8px;font-size:.82rem;z-index:99;transition:opacity .3s`;
     document.body.appendChild(t);
   }
-  t.textContent = msg; t.style.opacity = '1';
+  t.textContent = msg; t.style.opacity='1';
   clearTimeout(toastTmr);
-  toastTmr = setTimeout(() => t.style.opacity='0', 2500);
+  toastTmr = setTimeout(()=>t.style.opacity='0', 3000);
 }
 
-/* ── 폴링 ── */
 fetchSensors();
 fetchActuators();
-setInterval(fetchSensors,   5000);
-setInterval(fetchActuators, 5000);
+startAutoUpdate();
 </script>
 </body>
 </html>

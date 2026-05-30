@@ -36,7 +36,7 @@
 #define PIN_ESP_RX   2
 #define PIN_ESP_TX   3
 #define PIN_DHT      4
-#define PIN_FLAME    5
+#define PIN_FLAME    A1
 #define PIN_LED      6
 #define PIN_CDS      A0
 
@@ -220,13 +220,15 @@ static void read_and_send(void)
 
     int light = analogRead(PIN_CDS);
     
-    int flame = (digitalRead(PIN_FLAME) == HIGH) ? 1 : 0;
+  int flame = (analogRead(A1) > 50) ? 1 : 0;
 
     if (flame) {
         /* 화재 시 LED 점멸 */
         digitalWrite(PIN_LED, HIGH); delay(100);
         digitalWrite(PIN_LED, LOW);
         Serial.println("[경고] 화재 감지!");
+        Serial.print("[FLAME RAW] ");
+Serial.println(analogRead(A1));
     }
 
   char pkt[100];

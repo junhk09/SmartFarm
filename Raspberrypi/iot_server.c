@@ -1,5 +1,4 @@
 /* 서울기술교육센터 AIoT - SmartFarm Server */
-/* 기반: KSH 원본 + STM32 Bluetooth + MariaDB + HTTP API 추가 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,28 +16,7 @@
 #include <mysql/mysql.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
-
-/*
- * 컴파일:
- *   gcc -o iot_server iot_server.c \
- *       -lmysqlclient -lbluetooth -lpthread
- *
- * 실행:
- *   ./iot_server 9000
- *
- * ─── 통신 프로토콜 ───
- * 로그인        : [ID:PASSWD]
- * 센서 전송     : [5]SENSOR@조도@온도@습도@불꽃
- * STM32 제어    : [5]STM32@MOTOR:ON
- *                 [5]STM32@LED:R
- *                 [5]STM32@BUZZER:ON
- *                 [5]STM32@PUMP:ON
- * DB 조회       : [5]GETDB@LAMP
- * DB 설정       : [5]SETDB@LAMP@ON
- * HTTP API      : GET  /api/sensors
- *                 GET  /api/actuators
- *                 POST /api/control  body: target=MOTOR&value=ON
- */
+#include <math.h>
 
 #define BUF_SIZE        200
 #define MAX_CLNT        34
@@ -46,15 +24,22 @@
 #define ARR_CNT         10
 #define HTTP_PORT       8080
 
-/* STM32 HC-06 블루투스 MAC — 페어링 후 실제 MAC으로 변경 */
 #define STM32_BT_ADDR   "98:DA:60:0D:AF:75"
 #define STM32_BT_CH     1
 
-/* MariaDB */
 #define DB_HOST         "127.0.0.1"
 #define DB_USER         "iot"
 #define DB_PASS         "pwiot"
 #define DB_NAME         "iotdb"
+
+/* ── 계절 온도 기준 ── */
+#define TEMP_WINTER     10.0f   /* 이하 → 겨울 */
+#define TEMP_SUMMER     25.0f   /* 이상 → 여름 */
+
+/* 여름: 이 온도 이상이면 LED 밝기 낮춤 */
+#define TEMP_SUMMER_DIM 35.0f
+/* 겨울: 이 온도 이하이면 LED 밝기 올림 */
+#define TEMP_WINTER_BRT  5.0f
 
 typedef struct {
     char  fd;
@@ -77,10 +62,15 @@ int              clnt_cnt  = 0;
 pthread_mutex_t  mutx;
 pthread_mutex_t  bt_mutx;
 pthread_mutex_t  db_mutx;
-int              g_bt_fd   = -1;   /* STM32 블루투스 소켓 */
+int              g_bt_fd   = -1;
 MYSQL           *g_db      = NULL;
 
-/* ── 함수 선언 ── */
+/* 현재 계절 상태 (웹 API용) */
+static char g_season[16]   = "spring";
+static float g_last_temp   = 0.0f;
+static float g_last_humi   = 0.0f;
+static int   g_last_flame  = 0;
+
 void *clnt_connection(void *arg);
 void *http_server_thread(void *arg);
 void *bt_recv_thread(void *arg);
@@ -95,6 +85,27 @@ void  db_set_actuator(const char *name, const char *value);
 int   db_get_actuator(const char *name, char *out, size_t len);
 int   bt_connect_stm32(void);
 void  bt_send(const char *cmd);
+
+/* ════════════════════════════════════
+ *  계절 판단 + STM32 LED 제어
+ * ════════════════════════════════════ */
+void process_season(float temp)
+{
+    char cmd[64];
+
+     if (temp <= TEMP_WINTER) {
+        strcpy(g_season, "winter");
+        bt_send("CMD:LED:B\n");
+
+    } else if (temp >= TEMP_SUMMER) {
+        strcpy(g_season, "summer");
+        bt_send("CMD:LED:R\n");
+
+    } else {
+        strcpy(g_season, "spring");
+        bt_send("CMD:LED:G\n");
+    }
+}
 
 /* ════════════════════════════════════
  *  MariaDB
@@ -160,7 +171,7 @@ int db_get_actuator(const char *name, char *out, size_t len)
 }
 
 /* ════════════════════════════════════
- *  Bluetooth → STM32
+ *  Bluetooth
  * ════════════════════════════════════ */
 int bt_connect_stm32(void)
 {
@@ -190,7 +201,6 @@ void bt_send(const char *cmd)
     printf("[BT→STM32] %s\n", cmd);
 }
 
-/* STM32 → 서버 수신 스레드 (상태 업데이트) */
 void *bt_recv_thread(void *arg)
 {
     (void)arg;
@@ -201,9 +211,6 @@ void *bt_recv_thread(void *arg)
         if (n <= 0) { sleep(2); continue; }
         buf[n] = '\0';
         printf("[BT←STM32] %s\n", buf);
-
-        /* STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF 파싱 → DB 저장 */
-        /* 간단히 raw 저장 */
         char sql[300];
         snprintf(sql, sizeof(sql),
             "INSERT INTO actuator_log(raw_msg,created_at) "
@@ -216,11 +223,7 @@ void *bt_recv_thread(void *arg)
 }
 
 /* ════════════════════════════════════
- *  HTTP REST API (포트 8080)
- *  GET  /api/sensors      최신 센서 20개 (JSON)
- *  GET  /api/actuators    device 테이블 전체 (JSON)
- *  POST /api/control      STM32 제어
- *       body: target=MOTOR&value=ON
+ *  HTTP REST API
  * ════════════════════════════════════ */
 static void http_send(int fd, int code, const char *body)
 {
@@ -242,9 +245,9 @@ static void handle_get_sensors(int fd)
     char json[8192] = "[";
     int first = 1;
     if (!mysql_query(g_db,
-       "SELECT name,illu,temp,humi,flame,"
-"UNIX_TIMESTAMP(CONCAT(date,' ',time)) as ts "
-"FROM sensor ORDER BY id DESC LIMIT 20")) {
+        "SELECT name,illu,temp,humi,flame,"
+        "UNIX_TIMESTAMP(CONCAT(date,' ',time)) as ts "
+        "FROM sensor ORDER BY id DESC LIMIT 20")) {
         MYSQL_RES *res = mysql_store_result(g_db);
         if (res) {
             MYSQL_ROW row;
@@ -270,8 +273,7 @@ static void handle_get_actuators(int fd)
     pthread_mutex_lock(&db_mutx);
     char json[4096] = "[";
     int first = 1;
-    if (!mysql_query(g_db,
-        "SELECT name,value FROM device")) {
+    if (!mysql_query(g_db, "SELECT name,value FROM device")) {
         MYSQL_RES *res = mysql_store_result(g_db);
         if (res) {
             MYSQL_ROW row;
@@ -291,9 +293,18 @@ static void handle_get_actuators(int fd)
     http_send(fd, 200, json);
 }
 
+/* GET /api/status — 계절+최신센서 한번에 */
+static void handle_get_status(int fd)
+{
+    char json[256];
+    snprintf(json, sizeof(json),
+        "{\"season\":\"%s\",\"temp\":%.2f,\"humi\":%.2f,\"flame\":%d}",
+        g_season, g_last_temp, g_last_humi, g_last_flame);
+    http_send(fd, 200, json);
+}
+
 static void handle_post_control(int fd, const char *body)
 {
-    /* body: target=MOTOR&value=ON */
     char target[32] = "", value[32] = "";
     const char *p;
     p = strstr(body, "target=");
@@ -306,14 +317,10 @@ static void handle_post_control(int fd, const char *body)
         return;
     }
 
-    /* STM32에 블루투스 명령 전송 */
     char cmd[64];
     snprintf(cmd, sizeof(cmd), "CMD:%s:%s\n", target, value);
     bt_send(cmd);
-
-    /* DB에 상태 저장 */
     db_set_actuator(target, value);
-
     http_send(fd, 200, "{\"ok\":true}");
 }
 
@@ -335,6 +342,8 @@ static void *http_client_thread(void *arg)
         handle_get_sensors(fd);
     else if (strcmp(method,"GET")==0 && strcmp(path,"/api/actuators")==0)
         handle_get_actuators(fd);
+    else if (strcmp(method,"GET")==0 && strcmp(path,"/api/status")==0)
+        handle_get_status(fd);
     else if (strcmp(method,"POST")==0 && strcmp(path,"/api/control")==0)
         handle_post_control(fd, body);
     else
@@ -394,23 +403,58 @@ void *clnt_connection(void *arg)
         str_len = read(client_info->fd, msg, sizeof(msg)-1);
         if (str_len <= 0) break;
         msg[str_len] = '\0';
-        /* SENSOR 패킷 먼저 체크 */
-if (strstr(msg, "SENSOR@") != NULL) {
-    char raw[BUF_SIZE];
-    strncpy(raw, msg, sizeof(raw)-1);
-    int illu=0; float temp=0,humi=0; int flame=0;
-    char *tok = strtok(raw,"@");   /* [5]SENSOR */
-    tok = strtok(NULL,"@"); if(tok) illu  = atoi(tok);
-    tok = strtok(NULL,"@"); if(tok) temp  = atof(tok);
-    tok = strtok(NULL,"@"); if(tok) humi  = atof(tok);
-    tok = strtok(NULL,"@"); if(tok) flame = atoi(tok);
-    db_insert_sensor(client_info->id,illu,temp,humi,flame);
-    printf("[SENSOR] %s illu=%d temp=%.2f humi=%.2f flame=%d\n",
-           client_info->id,illu,temp,humi,flame);
-    if(flame) bt_send("CMD:BUZZER:ON|CMD:LED:R\n");
-    continue;
+
+        /* SENSOR 패킷 처리 */
+        if (strstr(msg, "SENSOR@") != NULL) {
+            char raw[BUF_SIZE];
+            strncpy(raw, msg, sizeof(raw)-1);
+            int   illu  = 0;
+            float temp  = 0, humi = 0;
+            int   flame = 0;
+
+            char *tok = strtok(raw, "@");
+            tok = strtok(NULL, "@"); if(tok) illu  = atoi(tok);
+            tok = strtok(NULL, "@"); if(tok) temp  = atof(tok);
+            tok = strtok(NULL, "@"); if(tok) humi  = atof(tok);
+            tok = strtok(NULL, "@"); if(tok) flame = atoi(tok);
+
+            db_insert_sensor(client_info->id, illu, temp, humi, flame);
+            printf("[SENSOR] %s illu=%d temp=%.2f humi=%.2f flame=%d\n",
+                   client_info->id, illu, temp, humi, flame);
+
+            /* 전역 최신값 업데이트 */
+            g_last_temp  = temp;
+            g_last_humi  = humi;
+            g_last_flame = flame;
+
+          /* 계절 판단 → 매번 호출 말고 온도 변화 있을 때만 */
+static float last_season_temp = -999.0f;
+if (fabsf(temp - last_season_temp) >= 1.0f) {
+    //process_season(temp);
+    last_season_temp = temp;
 }
-        /* 파싱: [TO]내용 */
+           /* 화재 감지 → 부저 ON + 워터펌프 ON */
+static int last_flame = -1;
+if (flame != last_flame) {
+    if (flame) {
+        bt_send("CMD:BUZZER:ON|CMD:LED:R\n");
+        bt_send("CMD:PUMP:ON\n");
+        db_set_actuator("BUZZER", "ON");
+        db_set_actuator("PUMP",   "ON");
+        printf("[ALERT] 화재 감지! 부저+펌프 ON\n");
+    } else {
+        bt_send("CMD:BUZZER:OFF\n");
+        bt_send("CMD:PUMP:OFF\n");
+        db_set_actuator("BUZZER", "OFF");
+        db_set_actuator("PUMP",   "OFF");
+        printf("[ALERT] 화재 해제 — 부저+펌프 OFF\n");
+    }
+    last_flame = flame;
+}
+            continue;
+        }
+
+        /* 기존 프로토콜 */
         pToken = strtok(msg, "[:]");
         i = 0;
         while (pToken != NULL) {
@@ -419,46 +463,13 @@ if (strstr(msg, "SENSOR@") != NULL) {
             pToken = strtok(NULL, "[:]");
         }
 
-        /* ── 센서 데이터: [5]SENSOR@조도@온도@습도@불꽃 ── */
-if (strstr(msg, "SENSOR") != NULL) {
-    /* @ 구분자로 재파싱 */
-    char raw[BUF_SIZE];
-    strncpy(raw, msg, sizeof(raw));
-
-    int  illu  = 0;
-    float temp = 0, humi = 0;
-    int  flame = 0;
-
-    char *tok = strtok(raw, "@");  /* [5]SENSOR */
-    tok = strtok(NULL, "@");       /* 조도 */
-    if (tok) illu  = atoi(tok);
-    tok = strtok(NULL, "@");       /* 온도 */
-    if (tok) temp  = atof(tok);
-    tok = strtok(NULL, "@");       /* 습도 */
-    if (tok) humi  = atof(tok);
-    tok = strtok(NULL, "@");       /* 불꽃 */
-    if (tok) flame = atoi(tok);
-
-    db_insert_sensor(client_info->id, illu, temp, humi, flame);
-    printf("[SENSOR] %s illu=%d temp=%.2f humi=%.2f flame=%d\n",
-           client_info->id, illu, temp, humi, flame);
-
-    if (flame) {
-        bt_send("CMD:BUZZER:ON|CMD:LED:R\n");
-        printf("[ALERT] 화재 감지!\n");
-    }
-    continue;
-}
-        /* ── STM32 제어: [5]STM32@MOTOR:ON ── */
         if (i >= 3 && !strcmp(pArray[1], "STM32")) {
             char cmd[64];
             snprintf(cmd, sizeof(cmd), "CMD:%s\n", pArray[2]);
             bt_send(cmd);
-            db_set_actuator(pArray[2], "ON"); /* 간단 상태 저장 */
             continue;
         }
 
-        /* ── 기존 프로토콜 (GETDB / SETDB / ALLMSG 등) ── */
         msg_info.fd   = client_info->fd;
         msg_info.from = client_info->id;
         msg_info.to   = pArray[0];
@@ -489,9 +500,6 @@ if (strstr(msg, "SENSOR") != NULL) {
     return NULL;
 }
 
-/* ════════════════════════════════════
- *  메시지 라우팅 (기존 로직 유지)
- * ════════════════════════════════════ */
 void send_msg(MSG_INFO *msg_info, CLIENT_INFO *first)
 {
     int i;
@@ -536,15 +544,10 @@ int main(int argc, char *argv[])
     char *pToken, *pArray[ARR_CNT] = {0};
     char msg[BUF_SIZE];
 
-    if (argc != 2) {
-        printf("Usage: %s <port>\n", argv[0]);
-        exit(1);
-    }
+    if (argc != 2) { printf("Usage: %s <port>\n", argv[0]); exit(1); }
 
-    /* MariaDB 초기화 */
     if (db_init() < 0) exit(1);
 
-    /* idpasswd.txt 읽기 */
     FILE *idFd = fopen("idpasswd.txt", "r");
     if (!idFd) { perror("fopen(idpasswd.txt)"); exit(1); }
 
@@ -572,14 +575,13 @@ int main(int argc, char *argv[])
         pthread_create(&bt_tid, NULL, bt_recv_thread, NULL);
         pthread_detach(bt_tid);
     } else {
-        fprintf(stderr, "[경고] STM32 BT 연결 실패 (MAC 확인 필요)\n");
+        fprintf(stderr, "[경고] STM32 BT 연결 실패\n");
     }
-    /* HTTP 서버 스레드 */
+
     pthread_t http_tid;
     pthread_create(&http_tid, NULL, http_server_thread, NULL);
     pthread_detach(http_tid);
 
-    /* TCP 서버 소켓 */
     serv_sock = socket(PF_INET, SOCK_STREAM, 0);
     memset(&serv_adr, 0, sizeof(serv_adr));
     serv_adr.sin_family      = AF_INET;
@@ -587,8 +589,7 @@ int main(int argc, char *argv[])
     serv_adr.sin_port        = htons(atoi(argv[1]));
     setsockopt(serv_sock, SOL_SOCKET, SO_REUSEADDR,
                &sock_option, sizeof(sock_option));
-    if (bind(serv_sock, (struct sockaddr *)&serv_adr,
-             sizeof(serv_adr)) == -1)
+    if (bind(serv_sock, (struct sockaddr *)&serv_adr, sizeof(serv_adr)) == -1)
         error_handling("bind() error");
     if (listen(serv_sock, 5) == -1)
         error_handling("listen() error");
@@ -596,13 +597,13 @@ int main(int argc, char *argv[])
     printf("=== SmartFarm IoT Server ===\n");
     printf("TCP  포트: %s\n", argv[1]);
     printf("HTTP 포트: %d\n", HTTP_PORT);
+    printf("계절 기준: 겨울<%.0f°C / 여름>%.0f°C\n", TEMP_WINTER, TEMP_SUMMER);
     fputs("IoT Server Start!!\n", stdout);
 
     while (1) {
         clnt_adr_sz = sizeof(clnt_adr);
         clnt_sock   = accept(serv_sock,
-                             (struct sockaddr *)&clnt_adr,
-                             &clnt_adr_sz);
+                             (struct sockaddr *)&clnt_adr, &clnt_adr_sz);
         if (clnt_cnt >= MAX_CLNT) {
             printf("socket full\n");
             shutdown(clnt_sock, SHUT_WR); continue;
@@ -632,24 +633,18 @@ int main(int argc, char *argv[])
                         break;
                     }
                     if (!strcmp(client_info[i].pw, pArray[1])) {
-                        strcpy(client_info[i].ip,
-                               inet_ntoa(clnt_adr.sin_addr));
+                        strcpy(client_info[i].ip, inet_ntoa(clnt_adr.sin_addr));
                         pthread_mutex_lock(&mutx);
                         client_info[i].index = i;
                         client_info[i].fd    = clnt_sock;
                         clnt_cnt++;
                         pthread_mutex_unlock(&mutx);
-                        sprintf(msg,
-                            "[%s] New connected! "
-                            "(ip:%s,fd:%d,cnt:%d)\n",
-                            pArray[0],
-                            inet_ntoa(clnt_adr.sin_addr),
+                        sprintf(msg, "[%s] New connected! (ip:%s,fd:%d,cnt:%d)\n",
+                            pArray[0], inet_ntoa(clnt_adr.sin_addr),
                             clnt_sock, clnt_cnt);
                         log_file(msg);
                         write(clnt_sock, msg, strlen(msg));
-                        pthread_create(t_id+i, NULL,
-                                       clnt_connection,
-                                       client_info+i);
+                        pthread_create(t_id+i, NULL, clnt_connection, client_info+i);
                         pthread_detach(t_id[i]);
                         break;
                     }
@@ -681,4 +676,3 @@ void getlocaltime(char *buf)
             t->tm_year-100,t->tm_mon+1,t->tm_mday,
             t->tm_hour,t->tm_min,t->tm_sec,wday[t->tm_wday]);
 }
-
