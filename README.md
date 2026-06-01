@@ -1,45 +1,47 @@
 # 🌱 SmartFarm IoT System
 
-라즈베리파이, 아두이노, STM32를 활용한 스마트팜 IoT 시스템입니다.
+라즈베리파이, 아두이노, STM32를 활용한 스마트팜 IoT System
 
 ---
 
 ## 📌 시스템 아키텍처
 
 ```
-아두이노 (ESP-01 WiFi)
-    └─── TCP ───▶ 라즈베리파이 (iot_server)
+아두이노 (ESP-01 WiFi) (Client)
+    └─── TCP ───▶ 라즈베리파이 (iot_server) (Server)
                         │
                         ├─── MariaDB (센서 데이터 저장)
                         ├─── HTTP API (포트 8080)
-                        └─── Bluetooth RFCOMM ───▶ STM32 F411RE (HC-06)
+                        └─── Bluetooth RFCOMM ───▶ STM32 F411RE (HC-06) (Server)
                                                           │
                                                     액추에이터 제어
-                                                    (RGB LED, 부저, DC모터, 수중펌프)
+                                                    (RGB LED, 부저, DC모터, 워터펌프, LED)
 
-웹 브라우저 ───▶ http://라즈베리파이IP ───▶ Apache ───▶ dashboard.html
-웹캠 스트리밍 ───▶ http://라즈베리파이IP:8090
+웹 브라우저 ───▶ http://라즈베리파이IP ───▶ Apache(Web Server) ───▶ dashboard.html
+                                                                           │
+                                                              mjpg-streamer 스트림 임베드
+                                                              (포트 8090 → 대시보드 내 표시)
 ```
 
 ---
 
 ## 🛠 사용 하드웨어
 
-| 장치 | 역할 |
-|---|---|
-| Raspberry Pi | 메인 서버, DB, HTTP API, BT 통신 |
-| Arduino UNO | 센서 데이터 수집 및 WiFi 전송 |
-| STM32 F411RE (Nucleo) | 액추에이터 제어 |
-| ESP-01 (WiFi) | 아두이노 WiFi 통신 |
-| HC-06 (Bluetooth) | STM32 블루투스 통신 |
-| DHT11 | 온습도 센서 |
-| CDS | 조도 센서 |
-| 불꽃 센서 | 화재 감지 |
-| RGB LED | 계절/상태 표시 |
-| DC 모터 | 가변저항 PWM 제어 |
-| 수중 펌프 + 릴레이 | 자동 급수 |
-| 부저 (수동) | 화재 경보 |
-| 로지텍 C270 | 실시간 웹캠 스트리밍 |
+|                장치                |                역할                   |
+|------------------------------------|---------------------------------------|
+|             Raspberry Pi           |  메인 서버, DB, HTTP API, BT 통신      |
+|             Arduino UNO            |     센서 데이터 수집 및 WiFi 전송       |
+|         STM32 F411RE (Nucleo)      |           액추에이터 제어              |
+|             ESP-01 (WiFi)          |          아두이노 WiFi 통신            |
+|         HC-06 (Bluetooth)          |         STM32 블루투스 통신            |
+|                DHT11               |              온습도 센서               |
+|                 CDS                |               조도 센서                |
+|               불꽃 센서             |               화재 감지                |
+|                RGB LED             |             계절/상태 표시              |
+|                DC 모터             |            가변저항 PWM 제어            |
+|         수중 펌프 + 릴레이          |                자동 급수                |
+|             부저 (수동)            |                화재 경보                |
+|             로지텍 C270            | 실시간 웹캠 스트리밍 (대시보드 내 임베드) |
 
 ---
 
@@ -66,12 +68,12 @@ STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF
 ```
 
 ### HTTP REST API
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | /api/sensors | 최근 센서 데이터 |
-| GET | /api/actuators | 액추에이터 상태 |
-| GET | /api/status | 계절 + 최신 센서 |
-| POST | /api/control | 액추에이터 제어 |
+| 메서드 |      경로      |       설명      |
+|--------|----------------|-----------------|
+|   GET  | /api/sensors   | 최근 센서 데이터 |
+|   GET  | /api/actuators | 액추에이터 상태  |
+|   GET  | /api/status    | 계절 + 최신 센서 |
+|   POST | /api/control   | 액추에이터 제어  |
 
 ---
 
@@ -82,39 +84,38 @@ STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF
 - MariaDB에 데이터 저장
 
 ### 🌈 계절별 RGB LED 자동 제어
-| 온도 | 계절 | LED 색상 |
-|---|---|---|
-| 10°C 이하 | 겨울 | 파랑 |
-| 10~25°C | 봄/가을 | 초록 |
-| 25°C 이상 | 여름 | 빨강 |
+|    온도   |    계절    | LED 색상 |
+|-----------|------------|----------|
+| 10°C 이하 | ❄️ 겨울    | 파랑     |
+| 10~25°C   | 🌸 봄/가을 | 초록     |
+| 25°C 이상 | ☀️ 여름    | 빨강     |
 
 ### 🔥 화재 감지 자동 대응
-- 화재 감지 시 부저 ON + 워터펌프 ON 자동 실행
-- 5초 후 자동 OFF
+- 화재 감지 시 부저 ON + 워터펌프 자동 5초 가동
 - 화재 해제 시 부저/펌프 자동 종료
 
 ### 💧 습도 기반 자동 급수
-- 습도 20% 이하 시 워터펌프 자동 5초 가동
+- 습도 20% 이하 시 워터펌프 및 DC모터 자동 5초 가동(습도 상승 위함)
 - 웹 UI에 가동 상태 표시
 
 ### ☀️ 조도 기반 시간대 표시
-| 조도 | 시간대 | 메시지 |
-|---|---|---|
-| 640 이상 | 🌞 낮 | 조도 조절 필요 |
-| 620~640 | 🌅 아침/새벽 | - |
-| 620 미만 | 🌙 밤 | 조도 조절 필요 |
+|   조도   |    시간대    |     메시지    |
+|----------|--------------|---------------|
+| 640 이상 | 🌞 낮        | 조도 조절 필요 |
+| 620~640  | 🌅 아침/새벽 |       -       |
+| 620 미만 | 🌙 밤        | 조도 조절 필요 |
 
 ### 💡 CDS 연동 LED 밝기 제어
 - 아두이노 CDS 센서값 → 서버 → STM32 명령 전송
-- STM32 TIM3 CH3 PWM으로 LED 밝기 자동 조절
+- STM32 TIM3 CH3 PWM으로 LED 밝기 자동 조절 (HIGH/MID/LOW)
 
 ### 🎛 가변저항 LED 제어
 - STM32 ADC(PA0) 가변저항 → TIM3 CH1 PWM → LED 밝기 실시간 조절
 
 ### 📷 실시간 웹캠 스트리밍
 - 로지텍 C270 웹캠
-- mjpg-streamer로 640x480 15fps 스트리밍
-- 웹 대시보드에 통합
+- mjpg-streamer 640x480 15fps
+- 웹 대시보드 내에 직접 임베드하여 표시
 
 ---
 
@@ -146,34 +147,34 @@ CREATE TABLE device (
 
 ## 🔌 STM32 핀 설정
 
-| 핀 | 기능 |
-|---|---|
-| PA0 | ADC1 CH0 (가변저항) |
-| PA6 | TIM3 CH1 (ADC LED) |
-| PA8 | TIM1 CH1 (DC모터 PWM) |
-| PA9 | TIM1 CH2 (DC모터 PWM) |
-| PB0 | TIM3 CH3 (CDS LED) |
-| PB5 | PUMP_RELAY |
-| PB6 | MOTOR_EN |
-| PB9 | TIM4 CH4 (부저 PWM) |
-| PC0 | LED_R |
-| PC1 | LED_G |
-| PC2 | LED_B |
-| PC6 | USART6 TX (HC-06) |
-| PC7 | USART6 RX (HC-06) |
+|  핀 |          기능         |
+|-----|-----------------------|
+| PA0 | ADC1 CH0 (가변저항)    |
+| PA6 | TIM3 CH1 (ADC LED)    | -> 아침/낮/밤 상황설정용 LED
+| PA8 | TIM1 CH1 (DC모터 PWM) | -> 모터드라이버 INA
+| PA9 | TIM1 CH2 (DC모터 PWM) | -> 모터드라이버 INB
+| PB0 | TIM3 CH3 (CDS LED)   | -> CDS값에 따른 LED밝기조절
+| PB5 | PUMP_RELAY           | -> 릴레이모듈 SIG(IN)핀에 연결
+| PB6 | MOTOR_EN             | -> 모터드라이버 ENA
+| PB9 | TIM4 CH4 (부저 PWM)  | 
+| PC0 | LED_R                |
+| PC1 | LED_G                |
+| PC2 | LED_B                |
+| PC6 | USART6 TX (HC-06)    | -> HC-06 RXD
+| PC7 | USART6 RX (HC-06)    | -> HC-06 TXD
 
 ---
 
 ## 🔌 아두이노 핀 설정
 
-| 핀 | 기능 |
-|---|---|
+| 핀 |             기능              |
+|----|-------------------------------|
 | D2 | ESP-01 TX (SoftwareSerial RX) |
 | D3 | ESP-01 RX (SoftwareSerial TX) |
-| D4 | DHT11 |
-| D6 | LED |
-| A0 | CDS (조도 센서) |
-| A1 | 불꽃 센서 |
+| D4 |             DHT11             |
+| D6 |              LED              |
+| A0 |         CDS (조도 센서)        |
+| A1 |             불꽃 센서          |
 
 ---
 
@@ -191,15 +192,15 @@ gcc -o iot_server iot_server.c -lmysqlclient -lbluetooth -lpthread
 ./iot_server 9000
 ```
 
-### 3. 웹 대시보드 배포
-```bash
-sudo cp dashboard.html /var/www/html/index.html
-```
-
-### 4. 웹캠 스트리밍 시작
+### 3. 웹캠 스트리밍 백그라운드 실행
 ```bash
 mjpg_streamer -i "input_uvc.so -d /dev/video0 -r 640x480 -f 15" \
               -o "output_http.so -p 8090 -w /usr/local/share/mjpg-streamer/www" &
+```
+
+### 4. 웹 대시보드 배포
+```bash
+sudo cp dashboard.html /var/www/html/index.html
 ```
 
 ### 5. Bluetooth 페어링 (최초 1회)
@@ -218,12 +219,11 @@ exit
 
 ## 🌐 접속 주소
 
-| 서비스 | 주소 |
-|---|---|
-| 웹 대시보드 | http://라즈베리파이IP |
-| 카메라 스트리밍 | http://라즈베리파이IP:8090/?action=stream |
-| HTTP API | http://라즈베리파이IP:8080/api/sensors |
-| TCP 서버 | 라즈베리파이IP:9000 |
+|          서비스         |                 주소                  |
+|-------------------------|---------------------------------------|
+| 웹 대시보드 (카메라 포함) |          http://라즈베리파이IP         |
+|         HTTP API        |         http://라즈베리파이IP          |
+|         TCP 서버        |         라즈베리파이IP:9000            |
 
 ---
 
@@ -234,14 +234,14 @@ smartfarm/
 ├── server/
 │   ├── iot_server.c      # 라즈베리파이 메인 서버
 │   ├── schema.sql        # MariaDB 스키마
-│   ├── idpasswd.txt      # 클라이언트 인증 정보
-│   └── Makefile
+│   └── idpasswd.txt      # 클라이언트 인증 정보
+│   
 ├── arduino/
-│   └── arduino_node5.ino # 아두이노 클라이언트
+│   └── arduino_pj.ino # 아두이노 클라이언트
 ├── stm32/
 │   └── main.c            # STM32 FreeRTOS 메인 코드
 └── web/
-    └── dashboard.html    # 웹 대시보드
+    └── dashboard_2.html    # 웹 대시보드 (카메라 스트리밍 임베드)
 ```
 
 ---
