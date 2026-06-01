@@ -421,7 +421,16 @@ void *clnt_connection(void *arg)
             db_insert_sensor(client_info->id, illu, temp, humi, flame);
             printf("[SENSOR] %s illu=%d temp=%.2f humi=%.2f flame=%d\n",
                    client_info->id, illu, temp, humi, flame);
-
+            
+            /* CDS 값에 따라 STM32 LED 밝기 조절 */
+            if (illu >= 650) {
+                bt_send("CMD:LIGHT:HIGH\n");
+            } else if (illu >= 600) {
+                bt_send("CMD:LIGHT:MID\n");
+            } else {
+                bt_send("CMD:LIGHT:LOW\n");
+            }
+                
             /* 전역 최신값 업데이트 */
             g_last_temp  = temp;
             g_last_humi  = humi;
@@ -433,25 +442,42 @@ if (fabsf(temp - last_season_temp) >= 1.0f) {
     //process_season(temp);
     last_season_temp = temp;
 }
-           /* 화재 감지 → 부저 ON + 워터펌프 ON */
+/* 화재 감지 → 부저 ON + 워터펌프 ON */
 static int last_flame = -1;
+static int fire_active = 0;
+static time_t fire_off_time = 0;
+
+/* 화재 OFF 타이머 체크 (매 센서 수신마다) */
+if (fire_active && fire_off_time > 0 && time(NULL) >= fire_off_time) {
+    bt_send("CMD:BUZZER:OFF\n");
+    usleep(100000);
+    bt_send("CMD:LED:G\n");
+    usleep(100000);
+    bt_send("CMD:PUMP:OFF\n");
+    db_set_actuator("BUZZER", "OFF");
+    db_set_actuator("PUMP",   "OFF");
+    printf("[ALERT] 부저+펌프 OFF\n");
+    fire_active   = 0;
+    fire_off_time = 0;
+    last_flame    = 0;
+}
+
 if (flame != last_flame) {
     if (flame) {
-        bt_send("CMD:BUZZER:ON|CMD:LED:R\n");
+        bt_send("CMD:BUZZER:ON\n");
+        usleep(100000);
+        bt_send("CMD:LED:R\n");
+        usleep(100000);
         bt_send("CMD:PUMP:ON\n");
         db_set_actuator("BUZZER", "ON");
         db_set_actuator("PUMP",   "ON");
         printf("[ALERT] 화재 감지! 부저+펌프 ON\n");
-    } else {
-        bt_send("CMD:BUZZER:OFF\n");
-        bt_send("CMD:PUMP:OFF\n");
-        db_set_actuator("BUZZER", "OFF");
-        db_set_actuator("PUMP",   "OFF");
-        printf("[ALERT] 화재 해제 — 부저+펌프 OFF\n");
+        fire_active   = 1;
+        fire_off_time = time(NULL) + 5;
     }
     last_flame = flame;
 }
-            continue;
+continue;
         }
 
         /* 기존 프로토콜 */
@@ -676,3 +702,4 @@ void getlocaltime(char *buf)
             t->tm_year-100,t->tm_mon+1,t->tm_mday,
             t->tm_hour,t->tm_min,t->tm_sec,wday[t->tm_wday]);
 }
+

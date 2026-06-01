@@ -64,8 +64,8 @@ all: main-build
 main-build: smart_farm.elf secondary-outputs
 
 # Tool invocations
-smart_farm.elf smart_farm.map: $(OBJS) $(USER_OBJS) C:\Users\IoT29\Desktop\smart_farm\smart_farm\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "smart_farm.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\IoT29\Desktop\smart_farm\smart_farm\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="smart_farm.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+smart_farm.elf smart_farm.map: $(OBJS) $(USER_OBJS) C:\Users\IoT29\Desktop\smart_farm\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "smart_farm.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\IoT29\Desktop\smart_farm\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="smart_farm.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
