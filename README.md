@@ -119,21 +119,29 @@ STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF
 
 ---
 
-## 🗄 MariaDB 스키마
+## 🗄 MariaDB 스키마 (iotdb)
 
-```sql
--- 센서 데이터
-CREATE TABLE sensor (
-  id    INT AUTO_INCREMENT PRIMARY KEY,
-  name  VARCHAR(20),
-  date  DATE,
-  time  TIME,
-  illu  INT,
-  temp  FLOAT,
-  humi  FLOAT,
-  flame TINYINT(1) DEFAULT 0
-);
+### sensor 테이블
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | int(11) | PK, AUTO_INCREMENT |
+| name | varchar(20) | 클라이언트 ID |
+| date | date | 측정 날짜 |
+| time | time | 측정 시각 |
+| illu | int(11) | 조도 값 |
+| temp | float | 온도 (°C) |
+| humi | float | 습도 (%) |
+| flame | tinyint(1) | 화재 감지 (0=정상, 1=감지) |
 
+### device 테이블
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | int(11) | PK |
+| name | varchar(20) | 장치명 (MOTOR/BUZZER/PUMP) |
+| date | date | 마지막 변경 날짜 |
+| time | time | 마지막 변경 시각 |
+| value | varchar(20) | 상태값 (ON/OFF) |
+| info | varchar(20) | 비고 |
 -- 액추에이터 상태
 CREATE TABLE device (
   name  VARCHAR(20) PRIMARY KEY,
