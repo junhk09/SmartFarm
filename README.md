@@ -142,15 +142,6 @@ STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF
 | time | time | 마지막 변경 시각 |
 | value | varchar(20) | 상태값 (ON/OFF) |
 | info | varchar(20) | 비고 |
--- 액추에이터 상태
-CREATE TABLE device (
-  name  VARCHAR(20) PRIMARY KEY,
-  value VARCHAR(20),
-  date  DATE,
-  time  TIME
-);
-```
-
 ---
 
 ## 🔌 STM32 핀 설정
