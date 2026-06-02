@@ -453,10 +453,11 @@ async function fetchActuators() {
   try {
     const r = await fetch(API+'/api/actuators');
     const data = await r.json();
+    const nameMap = { MOTOR: 'DC 모터', BUZZER: '부저', PUMP: '수중 펌프' };
     document.getElementById('act-status').innerHTML =
-      data.filter(x => x.name !== 'LAMP').map(x => {
+      data.filter(x => ['MOTOR', 'BUZZER', 'PUMP'].includes(x.name)).map(x => {
         const on = x.value !== 'OFF';
-        return `<div class="act-row"><span class="act-name">${x.name}</span><span class="act-val ${on?'on-txt':'off-txt'}">${x.value}</span></div>`;
+        return `<div class="act-row"><span class="act-name">${nameMap[x.name]}</span><span class="act-val ${on?'on-txt':'off-txt'}">${x.value}</span></div>`;
       }).join('');
   } catch(e) {}
 }
