@@ -81,7 +81,7 @@ STATUS:MOTOR:ON:SPD:75:PUMP:OFF:LED:G:BUZZ:OFF
 ## ⚙️ 주요 기능
 
 ### 🌡 센서 모니터링
-- 온도 / 습도 / 조도 / 화재 실시간 수집 (2초 간격)
+- 온도 / 습도 / 조도 / 화재 실시간 수집 
 - MariaDB에 데이터 저장
 
 ### 🌈 계절별 RGB LED 자동 제어
